@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}{% if recipe %}編輯食譜{% else %}新增食譜{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        max-width: 800px;
+        margin: 50px auto;
+        background: white;
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 15px 40px rgba(0,0,0,0.05);
+    }
+    .section-title {
+        border-bottom: 2px solid #f1f1f1;
+        padding-bottom: 10px;
+        margin-bottom: 25px;
+        font-weight: 600;
+    }
+    .dynamic-row {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        position: relative;
+    }
+    .remove-btn {
+        color: #ff6b6b;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    .remove-btn:hover {
+        color: #fa5252;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h2 class="mb-4 fw-bold text-center">{% if recipe %}編輯「{{ recipe.title }}」{% else %}建立新食譜{% endif %}</h2>
+    
+    <form action="{% if recipe %}{{ url_for('recipe.update', id=recipe.id) }}{% else %}{{ url_for('recipe.create') }}{% endif %}" method="POST">
+        
+        <!-- 基本資訊 -->
+        <div class="section-title">基本資訊</div>
+        <div class="row g-3 mb-4">
+            <div class="col-md-8">
+                <label class="form-label fw-bold">食譜名稱 *</label>
+                <input type="text" name="title" class="form-control" value="{{ recipe.title if recipe else '' }}" required placeholder="例：經典台式滷肉飯">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">分類 *</label>
+                <select name="category" class="form-select" required>
+                    <option value="" disabled {% if not recipe %}selected{% endif %}>選擇分類</option>
+                    {% for cat in ['主食', '配菜', '湯品', '甜點'] %}
+                    <option value="{{ cat }}" {% if recipe and recipe.category == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">準備時間 (分鐘)</label>
+                <input type="number" name="total_time" class="form-control" value="{{ recipe.total_time if recipe else '' }}" placeholder="例：30">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">基礎份量 (人份)</label>
+                <input type="number" name="servings" class="form-control" value="{{ recipe.servings if recipe else 2 }}" required>
+            </div>
+        </div>
+
+        <!-- 食材明細 -->
+        <div class="d-flex justify-content-between align-items-center section-title">
+            <span>食材明細</span>
+            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" onclick="addIngredient()">
+                <i class="fas fa-plus"></i> 新增食材
+            </button>
+        </div>
+        <div id="ingredientContainer" class="mb-4">
+            {% if ingredients %}
+                {% for item in ingredients %}
+                <div class="row g-2 dynamic-row align-items-center">
+                    <div class="col-5">
+                        <input type="text" name="ingredient_name[]" class="form-control" value="{{ item.name }}" placeholder="食材名稱">
+                    </div>
+                    <div class="col-3">
+                        <input type="number" step="0.01" name="ingredient_quantity[]" class="form-control" value="{{ item.quantity }}" placeholder="數量">
+                    </div>
+                    <div class="col-3">
+                        <input type="text" name="ingredient_unit[]" class="form-control" value="{{ item.unit }}" placeholder="單位">
+                    </div>
+                    <div class="col-1 text-center">
+                        <i class="fas fa-times-circle remove-btn" onclick="this.parentElement.parentElement.remove()"></i>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="row g-2 dynamic-row align-items-center">
+                    <div class="col-5">
+                        <input type="text" name="ingredient_name[]" class="form-control" placeholder="食材名稱">
+                    </div>
+                    <div class="col-3">
+                        <input type="number" step="0.01" name="ingredient_quantity[]" class="form-control" placeholder="數量">
+                    </div>
+                    <div class="col-3">
+                        <input type="text" name="ingredient_unit[]" class="form-control" placeholder="單位">
+                    </div>
+                    <div class="col-1 text-center">
+                        <i class="fas fa-times-circle remove-btn" onclick="this.parentElement.parentElement.remove()"></i>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- 烹飪步驟 -->
+        <div class="d-flex justify-content-between align-items-center section-title">
+            <span>烹飪步驟</span>
+            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" onclick="addStep()">
+                <i class="fas fa-plus"></i> 新增步驟
+            </button>
+        </div>
+        <div id="stepContainer" class="mb-4">
+            {% if steps %}
+                {% for step in steps %}
+                <div class="dynamic-row">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="fw-bold">步驟</span>
+                        <i class="fas fa-times-circle remove-btn" onclick="this.parentElement.parentElement.remove()"></i>
+                    </div>
+                    <textarea name="step_description[]" class="form-control" rows="2" placeholder="詳細描述步驟...">{{ step.description }}</textarea>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="dynamic-row">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="fw-bold">步驟</span>
+                        <i class="fas fa-times-circle remove-btn" onclick="this.parentElement.parentElement.remove()"></i>
+                    </div>
+                    <textarea name="step_description[]" class="form-control" rows="2" placeholder="詳細描述步驟..."></textarea>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- 標籤 -->
+        <div class="section-title">標籤 (以逗號分隔)</div>
+        <div class="mb-4">
+            <input type="text" name="tags" class="form-control" value="{{ tags_str if tags_str else '' }}" placeholder="例：家常菜, 快速, 氣炸鍋">
+            <div class="form-text">標籤可以幫助你更快找到類似的食譜。</div>
+        </div>
+
+        <div class="d-grid gap-2 mt-5">
+            <button type="submit" class="btn btn-primary btn-lg rounded-pill">儲存食譜</button>
+            <a href="{{ url_for('recipe.index') }}" class="btn btn-link text-muted">取消並返回</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function addIngredient() {
+        const container = document.getElementById('ingredientContainer');
+        const div = document.createElement('div');
+        div.className = 'row g-2 dynamic-row align-items-center';
+        div.innerHTML = `
+            <div class="col-5">
+                <input type="text" name="ingredient_name[]" class="form-control" placeholder="食材名稱">
+            </div>
+            <div class="col-3">
+                <input type="number" step="0.01" name="ingredient_quantity[]" class="form-control" placeholder="數量">
+            </div>
+            <div class="col-3">
+                <input type="text" name="ingredient_unit[]" class="form-control" placeholder="單位">
+            </div>
+            <div class="col-1 text-center">
+                <i class="fas fa-times-circle remove-btn" onclick="this.parentElement.parentElement.remove()"></i>
+            </div>
+        `;
+        container.appendChild(div);
+    }
+
+    function addStep() {
+        const container = document.getElementById('stepContainer');
+        const div = document.createElement('div');
+        div.className = 'dynamic-row';
+        div.innerHTML = `
+            <div class="d-flex justify-content-between mb-2">
+                <span class="fw-bold">步驟</span>
+                <i class="fas fa-times-circle remove-btn" onclick="this.parentElement.parentElement.remove()"></i>
+            </div>
+            <textarea name="step_description[]" class="form-control" rows="2" placeholder="詳細描述步驟..."></textarea>
+        `;
+        container.appendChild(div);
+    }
+</script>
+{% endblock %}

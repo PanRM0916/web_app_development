@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}{{ recipe.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .recipe-header {
+        background: white;
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        margin-top: 40px;
+    }
+    .ingredient-item {
+        padding: 12px 0;
+        border-bottom: 1px solid #f1f1f1;
+    }
+    .ingredient-item:last-child {
+        border-bottom: none;
+    }
+    .step-card {
+        border-left: 4px solid #667eea;
+        background: #fff;
+        margin-bottom: 20px;
+        padding: 20px;
+        border-radius: 0 15px 15px 0;
+        transition: all 0.3s ease;
+    }
+    .step-card.completed {
+        border-left-color: #2ecc71;
+        opacity: 0.7;
+    }
+    .step-number {
+        font-weight: 600;
+        color: #667eea;
+        margin-right: 15px;
+    }
+    .serving-control {
+        max-width: 150px;
+    }
+    .tag-badge {
+        background: #e9ecef;
+        color: #495057;
+        text-decoration: none;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        margin-right: 5px;
+        transition: all 0.2s;
+    }
+    .tag-badge:hover {
+        background: #dee2e6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="recipe-header mb-5">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <div class="d-flex align-items-center mb-3">
+                <span class="badge bg-primary rounded-pill px-3 py-2 me-2">{{ recipe.category }}</span>
+                {% if recipe.total_time %}
+                <span class="text-muted small"><i class="far fa-clock me-1"></i>{{ recipe.total_time }} 分鐘</span>
+                {% endif %}
+            </div>
+            <h1 class="display-4 fw-bold mb-3">{{ recipe.title }}</h1>
+            <div class="mb-4">
+                {% for tag in tags %}
+                <a href="{{ url_for('recipe.index', q=tag.name) }}" class="tag-badge">#{{ tag.name }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <div class="d-flex justify-content-md-end gap-2">
+                <a href="{{ url_for('recipe.edit', id=recipe.id) }}" class="btn btn-outline-primary rounded-pill px-4">
+                    <i class="fas fa-edit me-1"></i> 編輯
+                </a>
+                <form action="{{ url_for('recipe.delete', id=recipe.id) }}" method="POST" onsubmit="return confirm('確定要刪除這個食譜嗎？');">
+                    <button type="submit" class="btn btn-outline-danger rounded-pill px-4">
+                        <i class="fas fa-trash me-1"></i> 刪除
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 食材欄 -->
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body p-4">
+                <h4 class="fw-bold mb-4">食材清單</h4>
+                
+                <div class="serving-control mb-4">
+                    <label class="form-label text-muted small">調整份量 (人份)</label>
+                    <div class="input-group">
+                        <button class="btn btn-outline-secondary" type="button" onclick="adjustServings(-1)">-</button>
+                        <input type="number" id="servingInput" class="form-control text-center" value="{{ recipe.servings }}" min="1" onchange="updateIngredients()">
+                        <button class="btn btn-outline-secondary" type="button" onclick="adjustServings(1)">+</button>
+                    </div>
+                </div>
+
+                <div id="ingredientList">
+                    {% for item in ingredients %}
+                    <div class="ingredient-item d-flex justify-content-between align-items-center">
+                        <span class="ingredient-name">{{ item.name }}</span>
+                        <span class="ingredient-amount text-primary fw-bold" 
+                              data-base-qty="{{ item.quantity or 0 }}">
+                            <span class="qty-display">{{ item.quantity or '' }}</span> {{ item.unit or '' }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 步驟欄 -->
+    <div class="col-lg-8">
+        <h4 class="fw-bold mb-4">烹飪步驟</h4>
+        <div id="stepList">
+            {% for step in steps %}
+            <div class="step-card shadow-sm d-flex align-items-start" onclick="this.classList.toggle('completed')">
+                <span class="step-number h3 mb-0">{{ step.step_number }}</span>
+                <div class="step-content">
+                    {{ step.description }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const baseServings = {{ recipe.servings }};
+    
+    function adjustServings(delta) {
+        const input = document.getElementById('servingInput');
+        let newVal = parseInt(input.value) + delta;
+        if (newVal < 1) newVal = 1;
+        input.value = newVal;
+        updateIngredients();
+    }
+
+    function updateIngredients() {
+        const currentServings = parseInt(document.getElementById('servingInput').value);
+        const ratio = currentServings / baseServings;
+        
+        const amounts = document.querySelectorAll('.ingredient-amount');
+        amounts.forEach(el => {
+            const baseQty = parseFloat(el.getAttribute('data-base-qty'));
+            if (baseQty > 0) {
+                const newQty = (baseQty * ratio).toFixed(2);
+                // 移除結尾的 0
+                const displayQty = parseFloat(newQty);
+                el.querySelector('.qty-display').innerText = displayQty;
+            }
+        });
+    }
+</script>
+{% endblock %}
